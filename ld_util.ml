@@ -21,6 +21,15 @@ let matches re s =
 
 let finally fin f x = try let y = f x in fin (); y with e -> fin (); raise e
 
+(* when we cannot get the symbol with dlopen, because some symbol in the .cmxs
+ * cannot be resolved (e.g. there's a reference to a primitive defined in
+ * another library), we do it manually by:
+ * 1) obtaining the .data offset with objdump
+ * 2) obtaining the address of the caml_plugin_header symbol
+ * 3) extracting the data using objcopy
+ *)
+(* TODO: use libelf to do this without relying on external programs, for speed
+ * and reliability *)
 let manual_header_extraction filename =
   let rec data_section_offset ic = match input_line ic with
       l when matches (Str.regexp "\\.data") l -> begin
@@ -122,11 +131,6 @@ let state_of_known_modules ~known_interfaces ~known_implementations =
     }
 
 let (|>) x f = f x
-
-let add_dep state s d =
-  (* FIXME: omit base modules and those in state *)
-  (* FIXME: raise Not_found if dep not compatible with those in state *)
-  DS.add d s
 
 let check_conflicts deps tbl =
   List.iter
