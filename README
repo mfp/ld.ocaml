@@ -1,2 +1,17 @@
 
 Dynamic loader for OCaml.
+
+Given a list of cmxs objects (typically only one, corresponding to a program
+to execute), ld_ocaml scans the filesystem to find the available (.cmxs)
+libraries, infers which are needed in order to load the objects, and then
+proceeds to load them all in order.
+
+How it works
+------------
+.cmxs files hold information about the interfaces they import ("imports_cmi")
+and the implementations they are tied to because of inlining ("imports_cmx").
+This information is an OCaml string associated to the "caml_plugin_header"
+symbol which corresponds to a Marshal serialization of the header (see
+ld_header.ml). ld_ocaml looks for .cmxs files and builds a DLL catalog
+which is later used to resolve dependencies as needed.
+
