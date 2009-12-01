@@ -156,13 +156,20 @@ let update_deps state cmis lib =
   let cmxs = map_concat (fun u -> u.imports_cmx) lib.lib_units in
     (state, (uniq_deps (remove_satisfied_deps state (cmis @ cmis')), cmxs))
 
+let find_default d k m = try DM.find k m with Not_found -> d
+
 let rec solve_dependencies cat state = function
       [], _ -> (* no cmi deps left *) state
     | (cmi :: _) as all_cmis, all_cmxs ->
         check_conflicts all_cmis state.st_intfs;
         check_conflicts all_cmxs state.st_impls;
-        match DM.find cmi cat.cat_intf_map with
-            [] -> raise Not_found
+        match find_default [] cmi cat.cat_intf_map with
+            [] ->
+              let name, digest = cmi in
+                if !debug then
+                  eprintf "No implementation found for CMI %s (%s)\n"
+                    name (Digest.to_hex digest);
+                raise Not_found
           | l ->
               let rec loop = function
                   [] -> raise Not_found
@@ -174,20 +181,33 @@ let rec solve_dependencies cat state = function
                     with Not_found -> loop libs
               in loop l
 
-let run cat file =
-  let units = extract_units file in
-  let cmis = map_concat (fun u -> u.imports_cmi) units in
-  let cmxs = map_concat (fun u -> u.imports_cmx) units in
-  let solution = solve_dependencies cat empty_state (cmis, cmxs) in
-    List.iter
-      (fun lib ->
-         try
-           Dynlink.loadfile lib.lib_filename
-         with Dynlink.Error e ->
-           printf "Dynlink error when loading %s\n" lib.lib_filename;
-           print_endline (Dynlink.error_message e);
-           exit (-1))
-      solution.st_libs
+let resolve cat state files =
+  let units = map_concat extract_units files in
+  (* FIXME: exclusions should be done for each file separately *)
+  let exclude_self u = List.filter (fun (name, _) -> name <> u.name) in
+  let cmis =
+    map_concat (fun u -> exclude_self u u.imports_cmi) units |>
+    List.filter (fun (name, digest) -> not (M.mem name state.st_intfs)) in
+    (* TODO: check for & signal CMI incompatibilies, otherwise we get them at
+     * load time*)
+  let cmxs = map_concat (fun u -> exclude_self u u.imports_cmx) units in
+    solve_dependencies cat state (uniq_deps cmis, uniq_deps cmxs)
+
+let do_load file =
+  try
+    Dynlink.loadfile file
+  with Dynlink.Error e ->
+    printf "Dynlink error when loading %s\n" file;
+    print_endline (Dynlink.error_message e);
+    exit (-1)
+
+let load_deps solution =
+  List.iter (fun lib -> do_load lib.lib_filename) solution.st_libs
+
+let run cat state files =
+  let solution = resolve cat state files in
+    load_deps solution;
+    List.iter do_load files
 
 let is_cmxs s =
   let len = String.length s in
@@ -224,7 +244,7 @@ let build_catalog ?(dirs = default_dirs) () =
              { cat_intf_map =
                  List.fold_left
                    (fun m intf ->
-                      let prev = try DM.find intf m with Not_found -> [] in
+                      let prev = find_default [] intf m in
                         DM.add intf (lib :: prev) m)
                    cat.cat_intf_map
                    cmis}
