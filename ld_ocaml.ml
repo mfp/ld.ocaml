@@ -31,4 +31,6 @@ let () =
         List.iter (eprintf "  %s\n") cmxs;
         eprintf "Will load these libraries:\n";
         List.iter (fun lib -> eprintf "  %s\n" lib.lib_filename) sol.st_libs
-      end
+      end;
+      load_deps sol;
+      List.iter do_load cmxs
