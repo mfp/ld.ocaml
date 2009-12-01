@@ -82,15 +82,18 @@ let extract_headers file =
 
 let extract_units filename =
   let dll = dll_filename filename in
-    (* FIXME: wrap exception *)
     try
       let data = extract_headers dll in
       let header : dynheader = Marshal.from_string data 0 in
         if header.magic <> dyn_magic_number then
           failwith (filename ^ " is not an OCaml shared library.");
         header.units
-    with Failure msg ->
-      failwith (sprintf "Ld_util.extract_units (%S): %s" filename msg)
+    with
+      |  Failure msg ->
+          failwith (sprintf "Ld_util.extract_units (%S): %s" filename msg)
+      | e ->
+          failwith (sprintf "Ld_util.extract_units (%S): %s" filename
+                      (Printexc.to_string e))
 
 module DEP =
 struct
