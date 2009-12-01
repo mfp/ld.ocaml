@@ -1,6 +1,7 @@
 (* refer to all the std modules linked into ld_ocaml, so we can extract the
  * information automatically and create known module table *)
 
+module Bigarray = Bigarray
 module Dynlink = Dynlink
 module Str = Str
 module Unix = Unix
