@@ -136,19 +136,29 @@ let check_lib_conflicts state lib =
 
 let map_concat f l = List.concat (List.map f l)
 
-let update_deps all_cmis lib =
-  (* remove cmis from list *)
-  let libcmis =
-    List.fold_left
-      (fun s u -> DS.add (u.name, List.assoc u.name u.imports_cmi) s)
-      DS.empty lib.lib_units in
-  let cmis = List.filter (fun dep -> not (DS.mem dep libcmis)) all_cmis in
+let remove_satisfied_deps state cmis =
+  List.filter
+    (fun (name, digest) ->
+       if not (M.mem name state.st_intfs) then true
+       else
+         if M.find name state.st_intfs = digest then
+           false
+         else
+           raise Not_found)
+    cmis
+
+let uniq_deps l = DS.elements (List.fold_left (fun s d -> DS.add d s) DS.empty l)
+
+let update_deps state cmis lib =
+  (* remove cmis satisfied by lib from list, add new deps *)
+  let state = add_lib lib state in
+  let cmis' = map_concat (fun u -> u.imports_cmi) lib.lib_units in
   let cmxs = map_concat (fun u -> u.imports_cmx) lib.lib_units in
-    (cmis, cmxs)
+    (state, (uniq_deps (remove_satisfied_deps state (cmis @ cmis')), cmxs))
 
 let rec solve_dependencies cat state = function
       [], _ -> (* no cmi deps left *) state
-    | ((cmi :: cmis) as all_cmis), all_cmxs ->
+    | (cmi :: _) as all_cmis, all_cmxs ->
         check_conflicts all_cmis state.st_intfs;
         check_conflicts all_cmxs state.st_impls;
         match DM.find cmi cat.cat_intf_map with
@@ -159,9 +169,8 @@ let rec solve_dependencies cat state = function
                 | lib :: libs ->
                     try
                       check_lib_conflicts state lib;
-                      solve_dependencies cat
-                        (add_lib lib state)
-                        (update_deps all_cmis lib)
+                      let state, (cmis, cmxs) = update_deps state all_cmis lib in
+                        solve_dependencies cat state (cmis, cmxs)
                     with Not_found -> loop libs
               in loop l
 
