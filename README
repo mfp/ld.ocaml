@@ -6,6 +6,24 @@ to execute), ld_ocaml scans the filesystem to find the available (.cmxs)
 libraries, infers which are needed in order to load the objects, and then
 proceeds to load them all in order.
 
+Requirements
+------------
+OCaml >= 3.10 with native dynamic linking support (.cmxs files).
+
+Building
+--------
+
+  $ omake
+
+Usage
+-----
+
+  ld_ocaml foo.cmxs -other --options --are --ignored
+
+looks for .cmxs libraries and loads those required by foo.cmxs. Arg.current is
+updated to point to the first non-cmxs option, so foo.cmxs can use Arg to
+parse the remaining command line.
+
 How it works
 ------------
 .cmxs files hold information about the interfaces they import ("imports_cmi")
