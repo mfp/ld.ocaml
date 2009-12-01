@@ -141,7 +141,7 @@ let check_conflicts deps tbl =
 
 let add_lib lib st =
   {
-    st_libs = st.st_libs @ [lib];
+    st_libs = lib :: st.st_libs;
     st_impls =
       List.fold_left (fun m u -> M.add u.name u.crc m) st.st_impls lib.lib_units;
     st_intfs =
