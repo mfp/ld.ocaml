@@ -21,6 +21,7 @@ let () =
         eprintf "Loading:\n";
         List.iter (eprintf "  %s\n") cmxs;
         display_solution sol;
+        flush stderr;
       end;
       load_deps sol;
       List.iter do_load cmxs
