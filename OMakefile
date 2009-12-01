@@ -1,0 +1,26 @@
+NATIVE_ENABLED = true
+BYTE_ENABLED = false
+
+USE_OCAMLFIND = true
+OCAMLPACKS[] =
+	dynlink
+
+OCAMLOPTFLAGS += -linkall -cc "gcc -Wl,--whole-archive"  -ccopt -Wl,--no-whole-archive
+
+%.o: %.c
+	$(OCAMLC) $(mapprefix -ccopt, $(CFLAGS)) -c $^
+
+ld_util.a ld_util.cmxa: ld_util.cmx ld_stubs.o
+	ocamlmklib -o ld_util $^
+
+OCAML_LIBS[] =
+    ld_util
+
+OCamlProgram(ld_ocaml, ld_ocaml)
+
+.DEFAULT: ld_util.cma ld_util.cmxa ld_ocaml.opt
+
+.PHONY: clean
+
+clean:
+	rm -f $(filter-proper-targets $(ls R, .)) *.s *.annot *.so *.a

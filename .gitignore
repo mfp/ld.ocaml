@@ -1,0 +1,10 @@
+*.cm*
+*.o
+*.a
+*.opt
+*.run
+.omake*
+*.so
+*.omc
+*.swp
+core
