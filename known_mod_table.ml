@@ -6,6 +6,8 @@ module Str = Str
 module Unix = Unix
 module UnixLabels = UnixLabels
 module Pervasives = Pervasives
+module CamlinternalLazy = CamlinternalLazy
+module CamlinternalOO = CamlinternalOO
 
 (* stdlib *)
 module Arg = Arg
