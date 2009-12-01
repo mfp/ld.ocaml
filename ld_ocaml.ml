@@ -5,16 +5,7 @@ open Ld_known_modules
 
 let catalog = build_catalog ()
 
-let () =
-  if !debug then begin
-    prerr_endline (String.make 78 '=');
-    DM.iter
-      (fun (cmxname, cmxdigest) l ->
-         eprintf "%s %s\n" (Digest.to_hex cmxdigest) cmxname;
-         List.iter (fun lib -> eprintf "  %s\n" lib.lib_filename) l)
-      catalog.cat_intf_map;
-    prerr_endline (String.make 78 '=');
-  end
+let () = if !debug then display_catalog catalog
 
 let () =
   let state = state_of_known_modules ~known_interfaces ~known_implementations in
@@ -29,8 +20,7 @@ let () =
       if !debug then begin
         eprintf "Loading:\n";
         List.iter (eprintf "  %s\n") cmxs;
-        eprintf "Will load these libraries:\n";
-        List.iter (fun lib -> eprintf "  %s\n" lib.lib_filename) sol.st_libs
+        display_solution sol;
       end;
       load_deps sol;
       List.iter do_load cmxs

@@ -278,3 +278,16 @@ let build_catalog ?(dirs = default_dirs) () =
            | e -> prerr_endline (Printexc.to_string e); cat)
       empty_catalog
       cmxs_files
+
+let display_catalog catalog =
+  prerr_endline (String.make 78 '=');
+  DM.iter
+    (fun (cminame, cmidigest) l ->
+       eprintf "%s %s\n" (Digest.to_hex cmidigest) cminame;
+       List.iter (fun lib -> eprintf "  %s\n" lib.lib_filename) l)
+    catalog.cat_intf_map;
+  prerr_endline (String.make 78 '=')
+
+let display_solution sol =
+  eprintf "Will load these libraries:\n";
+  List.iter (fun lib -> eprintf "  %s\n" lib.lib_filename) sol.st_libs
