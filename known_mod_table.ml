@@ -5,6 +5,7 @@ module Dynlink = Dynlink
 module Str = Str
 module Unix = Unix
 module UnixLabels = UnixLabels
+module Pervasives = Pervasives
 
 (* stdlib *)
 module Arg = Arg
