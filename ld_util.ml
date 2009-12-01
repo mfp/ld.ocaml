@@ -1,4 +1,4 @@
-open Printf 
+open Printf
 
 (************************** copied from netdynlink.ml ************************)
 
@@ -173,7 +173,7 @@ let build_catalog ?(dirs = default_dirs) () =
     List.fold_left
       (fun cat file ->
          try
-           if !debug then printf "Scanning %s\n" file;
+           if !debug then eprintf "Scanning %s\n" file;
            let units = extract_units file in
            let cmis =
              List.map (fun u -> (u.name, List.assoc u.name u.imports_cmi)) units in
@@ -185,6 +185,7 @@ let build_catalog ?(dirs = default_dirs) () =
                         DM.add intf (lib :: prev) m)
                    cat.cat_intf_map
                    cmis}
-         with _ -> cat)
+         with Failure msg -> eprintf "%s\n%!" msg; cat
+           | e -> prerr_endline (Printexc.to_string e); cat)
       empty_catalog
       cmxs_files
