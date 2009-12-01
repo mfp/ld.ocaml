@@ -101,6 +101,26 @@ type state = {
 let empty_state = { st_libs = []; st_impls = M.empty; st_intfs = M.empty; }
 let empty_catalog = { cat_intf_map = DM.empty }
 
+let hex_to_digest s =
+  let digest = String.create 16 in
+    for i = 0 to 15 do
+      Scanf.sscanf (String.sub s (2*i) 2) "%x" (fun n -> digest.[i] <- char_of_int n)
+    done;
+    digest
+
+let state_of_known_modules ~known_interfaces ~known_implementations =
+  let build_map l =
+    List.fold_left
+      (fun m (name, hex) -> M.add name (hex_to_digest hex) m)
+      M.empty
+      l
+  in
+    {
+      st_libs = [];
+      st_impls = build_map known_implementations;
+      st_intfs = build_map known_interfaces;
+    }
+
 let (|>) x f = f x
 
 let add_dep state s d =
