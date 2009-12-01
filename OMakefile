@@ -18,6 +18,12 @@ ld_util.a ld_util.cmxa: ld_header.cmx ld_util.cmx ld_stubs.o
 OCAML_LIBS[] =
     ld_util
 
+known_mod_table.cmxs: known_mod_table.cmx
+    $(OCAMLFIND) ocamlopt -o $@ -shared $^
+
+ld_known_modules.ml: gen_known_mod_info known_mod_table.cmxs
+	./gen_known_mod_info known_mod_table.cmxs > $@
+
 ld_ocaml.opt: ld_util.cmxa ld_ocaml.cmx
     $(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) \
 	$(mapprefix -package, $(OCAMLPACKS)) \
@@ -26,6 +32,7 @@ ld_ocaml.opt: ld_util.cmxa ld_ocaml.cmx
 	-cclib -L.
 
 OCamlProgram(ld_ocaml, ld_ocaml)
+OCamlProgram(gen_known_mod_info, gen_known_mod_info)
 
 .DEFAULT: ld_util.cmxa ld_ocaml.opt
 
