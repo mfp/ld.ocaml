@@ -24,14 +24,13 @@ known_mod_table.cmxs: known_mod_table.cmx
 ld_known_modules.ml: gen_known_mod_info known_mod_table.cmxs
 	./gen_known_mod_info known_mod_table.cmxs > $@
 
-ld_ocaml.opt: ld_util.cmxa ld_ocaml.cmx
+ld_ocaml.opt: ld_util.cmxa ld_known_modules.cmx ld_ocaml.cmx ld_ocaml.o
     $(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) \
 	$(mapprefix -package, $(OCAMLPACKS)) \
-	-cc "gcc -Wl,--whole-archive" -o $@ $+ \
+	-cc "gcc -Wl,--whole-archive" -o $@ $(filter-out %.o, $+) \
 	-linkpkg -linkall -ccopt -Wl,--no-whole-archive \
 	-cclib -L.
 
-OCamlProgram(ld_ocaml, ld_ocaml)
 OCamlProgram(gen_known_mod_info, gen_known_mod_info)
 
 .DEFAULT: ld_util.cmxa ld_ocaml.opt
