@@ -24,6 +24,16 @@ looks for .cmxs libraries and loads those required by foo.cmxs. Arg.current is
 updated to point to the first non-cmxs option, so foo.cmxs can use Arg to
 parse the remaining command line.
 
+Creating the .cmxs libraries
+----------------------------
+Given a .cmxa file with PIC code, you can create the cmxs as follows:
+
+  ocamlopt -shared -o foo.cmxs foo.cmxa -linkall
+
+For instance, AAA batteries needs camomile.cmxs and nums.cmxs, which can be
+built that way (other modules, including Thread, Dynlink, Unix and Str, are
+already included in ld_ocaml's runtime).
+
 How it works
 ------------
 .cmxs files hold information about the interfaces they import ("imports_cmi")
