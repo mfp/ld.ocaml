@@ -180,7 +180,7 @@ let find_default d k m = try DM.find k m with Not_found -> d
 
 let rec solve_dependencies cat state = function
       [], _ -> (* no cmi deps left *) state
-    | (cmi :: _) as all_cmis, all_cmxs ->
+    | (cmi :: rest_cmis) as all_cmis, all_cmxs ->
         check_conflicts all_cmis state.st_intfs;
         check_conflicts all_cmxs state.st_impls;
         match find_default [] cmi cat.cat_intf_map with
@@ -189,7 +189,13 @@ let rec solve_dependencies cat state = function
                 if !debug then
                   eprintf "No implementation found for CMI %s (%s)\n"
                     name (Digest.to_hex digest);
-                raise Not_found
+                (* would be  raise Not_found  if all imported CMIs were
+                 * guaranteed to be provided by some lib, but some aren't
+                 * (e.g. Calendar_sig) since they only contain signatures and
+                 * type defs *)
+                (* so we just ignore the cmi and hope for the best --- we'll
+                 * get a load-time error in the worst case *)
+                solve_dependencies cat state (rest_cmis, all_cmxs)
           | l ->
               let rec loop = function
                   [] -> raise Not_found
