@@ -7,7 +7,7 @@ OCAMLPACKS[] =
 	unix
 	str
 
-OCAMLOPTFLAGS += -g
+OCAMLOPTFLAGS += -g -thread
 
 %.o: %.c
 	$(OCAMLC) $(mapprefix -ccopt, $(CFLAGS)) -c $^
@@ -21,7 +21,7 @@ OCAML_LIBS[] =
 LocalOCamlGeneratedFiles(ld_known_modules.ml)
 
 known_mod_table.cmxs: known_mod_table.ml
-    $(OCAMLFIND) ocamlopt -o $@ -shared $^
+    $(OCAMLFIND) ocamlopt -o $@ -shared $^ $(OCAMLOPTFLAGS)
 
 ld_known_modules.ml: gen_known_mod_info known_mod_table.cmxs
 	./gen_known_mod_info known_mod_table.cmxs > $@
