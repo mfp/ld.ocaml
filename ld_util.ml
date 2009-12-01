@@ -27,11 +27,64 @@ let debug = ref true
 
 external ld_extract_headers : string -> string = "ld_extract_headers"
 
+let readfile file =
+  let b = Buffer.create 13 in
+  let buf = String.create 1024 in
+  let ic = open_in file in
+  let rec loop () = match input ic buf 0 1024 with
+      0 -> close_in ic; Buffer.contents b
+    | n -> Buffer.add_substring b buf 0 n; loop ()
+  in loop ()
+
+let matches re s =
+  try
+    ignore (Str.search_forward re s 0); true
+  with Not_found -> false
+
+let finally fin f x = try let y = f x in fin (); y with e -> fin (); raise e
+
+let manual_header_extraction filename =
+  let rec data_section_offset ic = match input_line ic with
+      l when matches (Str.regexp "\\.data") l -> begin
+        match Str.split (Str.regexp "[ \t]+") l with
+            _::_::_::off::_ -> Scanf.sscanf off "%x" (fun n -> n)
+          | _ -> failwith "Couldn't find .data offset"
+      end
+    | _ -> data_section_offset ic in
+
+  let rec header_offset ic = match input_line ic with
+      l when matches (Str.regexp "caml_plugin_header") l -> begin
+        match Str.split (Str.regexp "[ \t]+") l with
+            off::_ -> Scanf.sscanf off "%x" (fun n -> n)
+          | _ -> failwith "Couldn't find caml_plugin_header symbol."
+      end
+    | _ -> header_offset ic in
+
+  let ic = Unix.open_process_in (sprintf "objdump -h %S" filename) in
+  let data_off = finally (fun () -> close_in ic) data_section_offset ic in
+  if !debug then eprintf "Got .data offset: %x\n" data_off;
+  let ic = Unix.open_process_in (sprintf "objdump -T %S" filename) in
+  let header_off = finally (fun () -> close_in ic) header_offset ic in
+  if !debug then eprintf "Got caml_plugin_header offset: %x\n" header_off;
+  let actual_off = header_off - data_off in
+  let tmp = Filename.temp_file (Filename.basename filename) "_ldocaml" in
+    ignore
+      (Sys.command
+         (sprintf "objcopy -O binary -j .data %S %S" filename tmp));
+    let data = readfile tmp in
+      Sys.remove tmp;
+      String.sub data actual_off (String.length data - actual_off)
+
+let extract_headers file =
+  try
+    ld_extract_headers file
+  with _ -> manual_header_extraction file
+
 let extract_units filename =
   let dll = dll_filename filename in
     (* FIXME: wrap exception *)
     try
-      let data = ld_extract_headers dll in
+      let data = extract_headers dll in
       let header : dynheader = Marshal.from_string data 0 in
         if header.magic <> dyn_magic_number then
           failwith (filename ^ " is not an OCaml shared library.");

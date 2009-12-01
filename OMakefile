@@ -4,6 +4,10 @@ BYTE_ENABLED = false
 USE_OCAMLFIND = true
 OCAMLPACKS[] =
 	dynlink
+	unix
+	str
+
+OCAMLOPTFLAGS += -g
 
 %.o: %.c
 	$(OCAMLC) $(mapprefix -ccopt, $(CFLAGS)) -c $^
@@ -15,7 +19,7 @@ OCAML_LIBS[] =
     ld_util
 
 ld_ocaml.opt: ld_util.cmxa ld_ocaml.cmx
-    $(OCAMLFIND) ocamlopt \
+    $(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) \
 	$(mapprefix -package, $(OCAMLPACKS)) \
 	-cc "gcc -Wl,--whole-archive" -o $@ $+ \
 	-linkpkg -linkall -ccopt -Wl,--no-whole-archive \
