@@ -1,0 +1,10 @@
+- : pending
++ : done
+
+- use libelf for manual header extraction instead of objdump/objcopy hack
+- cache DLL catalog
+- better cmdline handling in ld_ocaml: whether to show debug info, extra
+  paths, etc. Maybe use environment vars instead?
+- Sys.argv rewriting
+
+
