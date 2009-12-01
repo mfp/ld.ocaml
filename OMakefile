@@ -12,7 +12,7 @@ OCAMLOPTFLAGS += -g
 %.o: %.c
 	$(OCAMLC) $(mapprefix -ccopt, $(CFLAGS)) -c $^
 
-ld_util.a ld_util.cmxa: ld_util.cmx ld_stubs.o
+ld_util.a ld_util.cmxa: ld_header.cmx ld_util.cmx ld_stubs.o
 	ocamlmklib -o ld_util $^
 
 OCAML_LIBS[] =
