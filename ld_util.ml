@@ -107,6 +107,7 @@ type state = {
   st_runtime_impls : Digest.t M.t;
   st_impls : Digest.t M.t;
   st_intfs : Digest.t M.t;
+  st_missing_intfs : DS.t;
 }
 
 let find_default d k m = try DM.find k m with Not_found -> d
@@ -148,6 +149,7 @@ let state_of_known_modules ~known_interfaces ~known_implementations =
       st_runtime_intfs = build_map known_interfaces;
       st_impls = M.empty;
       st_intfs = M.empty;
+      st_missing_intfs = DS.empty;
     }
 
 let empty_state st =
@@ -232,7 +234,9 @@ let rec solve_dependencies cat state (cmis, cmxs) =
                  * type defs *)
                 (* so we just ignore the cmi and hope for the best --- we'll
                  * get a load-time error in the worst case *)
-                solve_dependencies cat state (rest_cmis, all_cmxs)
+                solve_dependencies cat
+                  { state with st_missing_intfs = DS.add cmi state.st_missing_intfs }
+                  (rest_cmis, all_cmxs)
           | (hd :: _) as l ->
               let rec loop = function
                   [] -> raise Not_found
@@ -245,6 +249,8 @@ let rec solve_dependencies cat state (cmis, cmxs) =
                     with Not_found -> loop libs
               in loop l
 
+let unresolved_modules st = DS.elements st.st_missing_intfs
+
 let resolve cat state files =
   let units = map_concat extract_units files in
   let exclude_self u = List.filter (fun (name, _) -> name <> u.name) in
@@ -252,21 +258,26 @@ let resolve cat state files =
   let cmxs = map_concat (fun u -> exclude_self u u.imports_cmx) units in
     solve_dependencies cat state (uniq_deps cmis, cmxs)
 
-let do_load file =
+let do_load solution file =
   try
     Dynlink.loadfile file
   with Dynlink.Error e ->
     printf "Dynlink error when loading %s\n" file;
     print_endline (Dynlink.error_message e);
+    print_newline ();
+    print_endline "The following symbols could not be resolved:";
+    List.iter
+      (fun (n, d) -> printf "%-30s %s\n" n (Digest.to_hex d))
+      (unresolved_modules solution);
     exit (-1)
 
 let load_deps solution =
-  List.iter (fun lib -> do_load lib.lib_filename) solution.st_libs
+  List.iter (fun lib -> do_load solution lib.lib_filename) solution.st_libs
 
 let run cat state files =
   let solution = resolve cat state files in
     load_deps solution;
-    List.iter do_load files
+    List.iter (do_load state) files
 
 let is_cmxs s =
   let len = String.length s in

@@ -33,8 +33,12 @@ val merge_catalogs : catalog list -> catalog
   * libs that need to be loaded before loading the [files] .cmxs *)
 val resolve : catalog -> state -> string list -> state
 
-(** [do_load file] uses Dynlink to load the given .cmxs file. *)
-val do_load : string -> unit
+(** [unresolved_modules state] returns a list of unresolved dependencies in
+  * [state] *)
+val unresolved_modules : state -> (string * Digest.t) list
+
+(** [do_load state file] uses Dynlink to load the given .cmxs file. *)
+val do_load : state -> string -> unit
 
 (** [load_deps state] loads the required libraries to reach [state]. *)
 val load_deps : state -> unit

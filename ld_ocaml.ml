@@ -56,4 +56,4 @@ let () =
         flush stderr;
       end;
       load_deps sol;
-      List.iter do_load cmxs
+      List.iter (do_load sol) cmxs
