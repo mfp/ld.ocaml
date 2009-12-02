@@ -1,7 +1,7 @@
 open Printf
 open Ld_header
 
-let debug = ref true
+let debug = ref 0
 
 external ld_extract_headers : string -> string = "ld_extract_headers"
 
@@ -49,10 +49,10 @@ let manual_header_extraction filename =
 
   let ic = Unix.open_process_in (sprintf "objdump -h %S" filename) in
   let data_off = finally (fun () -> close_in ic) data_section_offset ic in
-  if !debug then eprintf "Got .data offset: %x\n" data_off;
+  if !debug >= 2 then eprintf "Got .data offset: %x\n" data_off;
   let ic = Unix.open_process_in (sprintf "objdump -T %S" filename) in
   let header_off = finally (fun () -> close_in ic) header_offset ic in
-  if !debug then eprintf "Got caml_plugin_header offset: %x\n" header_off;
+  if !debug >= 2 then eprintf "Got caml_plugin_header offset: %x\n" header_off;
   let actual_off = header_off - data_off in
   let tmp = Filename.temp_file (Filename.basename filename) "_ldocaml" in
     ignore
@@ -208,7 +208,7 @@ let rec solve_dependencies cat state (cmis, cmxs) =
         match find_default [] cmi cat.cat_intf_map with
             [] ->
               let name, digest = cmi in
-                if !debug then
+                if !debug >= 1 then
                   eprintf "No implementation found for CMI %s (%s)\n"
                     name (Digest.to_hex digest);
                 (* would be  raise Not_found  if all imported CMIs were
@@ -280,7 +280,7 @@ let build_catalog ?(dirs = default_dirs) () =
     List.fold_left
       (fun cat file ->
          try
-           if !debug then eprintf "Scanning %s\n" file;
+           if !debug >= 2 then eprintf "Scanning %s\n" file;
            let units = extract_units file in
            let cmis =
              List.map (fun u -> (u.name, List.assoc u.name u.imports_cmi)) units in

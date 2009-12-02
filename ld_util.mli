@@ -10,8 +10,9 @@ type state
 (** Information about a library *)
 type lib = { lib_filename : string; lib_units : Ld_header.dynunit list; }
 
-(** Whether to output debug info. *)
-val debug : bool ref
+(** Debug level: 0 corresponds to no debug, higher levels will cause debug
+  * info to be printed to stderr. *)
+val debug : int ref
 
 (** Scan the filesystem for .cmxs files and build a DLL catalog. *)
 val build_catalog : ?dirs:string list -> unit -> catalog
