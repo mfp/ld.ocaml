@@ -24,6 +24,22 @@ looks for .cmxs libraries and loads those required by foo.cmxs. Arg.current is
 updated to point to the first non-cmxs option, so foo.cmxs can use Arg to
 parse the remaining command line.
 
+ld_ocaml honors these environment variables:
+
+ LD_OCAML_VERBOSE
+
+    set to 0 for no output (default), 1 for information about the libs that
+    will be loaded, 2 for debug info
+
+ LD_OCAML_LIBRARY_PATH
+
+    list of extra paths (separated by :) where .cmxs libraries can be found,
+    in addition to the standard directories
+
+ld_ocaml caches the system DLL catalog to $HOME/.ld.ocaml.cache.
+Delete that file to force a system catalog rebuild when new libraries are
+installed.
+
 Creating the .cmxs libraries
 ----------------------------
 Given a .cmxa file with PIC code, you can create the cmxs as follows:
