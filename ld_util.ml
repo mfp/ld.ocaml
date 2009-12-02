@@ -103,11 +103,12 @@ type catalog = {
 
 type state = {
   st_libs : lib list;
+  st_runtime_intfs : Digest.t M.t;
+  st_runtime_impls : Digest.t M.t;
   st_impls : Digest.t M.t;
   st_intfs : Digest.t M.t;
 }
 
-let empty_state = { st_libs = []; st_impls = M.empty; st_intfs = M.empty; }
 let empty_catalog = { cat_intf_map = DM.empty }
 
 let hex_to_digest s =
@@ -126,9 +127,14 @@ let state_of_known_modules ~known_interfaces ~known_implementations =
   in
     {
       st_libs = [];
-      st_impls = build_map known_implementations;
-      st_intfs = build_map known_interfaces;
+      st_runtime_impls = build_map known_implementations;
+      st_runtime_intfs = build_map known_interfaces;
+      st_impls = M.empty;
+      st_intfs = M.empty;
     }
+
+let empty_state st =
+  { st with st_libs = []; st_impls = M.empty; st_intfs = M.empty }
 
 let (|>) x f = f x
 
@@ -140,32 +146,40 @@ let check_conflicts deps tbl =
     deps
 
 let add_lib lib st =
+  if List.mem lib st.st_libs then st
+  else
   {
-    st_libs = lib :: st.st_libs;
-    st_impls =
-      List.fold_left (fun m u -> M.add u.name u.crc m) st.st_impls lib.lib_units;
-    st_intfs =
-      List.fold_left
-        (fun m u ->
-           let digest = List.assoc u.name u.imports_cmi in
-             M.add u.name digest m)
-        st.st_intfs
-        lib.lib_units;
+    st with
+        st_libs = st.st_libs @ [lib];
+        st_impls =
+          List.fold_left (fun m u -> M.add u.name u.crc m) st.st_impls lib.lib_units;
+        st_intfs =
+          List.fold_left
+            (fun m u ->
+               let digest = List.assoc u.name u.imports_cmi in
+                 M.add u.name digest m)
+            st.st_intfs
+            lib.lib_units;
   }
 
 let check_lib_conflicts state lib =
   (* see if any of the units is already loaded *)
   List.iter
-    (fun u -> if M.mem u.name state.st_intfs then raise Not_found) lib.lib_units
+    (fun map ->
+       List.iter (fun u -> if M.mem u.name map then raise Not_found) lib.lib_units)
+    [ state.st_intfs; state.st_runtime_intfs ]
 
 let map_concat f l = List.concat (List.map f l)
 
 let remove_satisfied_deps state cmis =
+  let intfs = state.st_intfs in
+  let runtime = state.st_runtime_intfs in
   List.filter
     (fun (name, digest) ->
-       if not (M.mem name state.st_intfs) then true
+       if not (M.mem name intfs || M.mem name runtime) then true
        else
-         if M.find name state.st_intfs = digest then
+         if M.mem name intfs && M.find name intfs = digest ||
+            M.mem name runtime && M.find name runtime = digest then
            false
          else
            raise Not_found)
@@ -173,16 +187,20 @@ let remove_satisfied_deps state cmis =
 
 let uniq_deps l = DS.elements (List.fold_left (fun s d -> DS.add d s) DS.empty l)
 
-let update_deps state cmis lib =
-  (* remove cmis satisfied by lib from list, add new deps *)
-  let state = add_lib lib state in
-  let cmis' = map_concat (fun u -> u.imports_cmi) lib.lib_units in
+let lib_deps lib =
+  let libcmis = List.map (fun u -> u.name) lib.lib_units in
+  (* must remove list of modules provided by the lib, libcmis, from its deps *)
+  let cmis =
+    map_concat (fun u -> u.imports_cmi) lib.lib_units |>
+    List.filter (fun (name, _) -> not (List.mem name libcmis)) in
   let cmxs = map_concat (fun u -> u.imports_cmx) lib.lib_units in
-    (state, (uniq_deps (remove_satisfied_deps state (cmis @ cmis')), cmxs))
+    (uniq_deps cmis, cmxs)
 
 let find_default d k m = try DM.find k m with Not_found -> d
 
-let rec solve_dependencies cat state = function
+let rec solve_dependencies cat state (cmis, cmxs) =
+  let cmis = remove_satisfied_deps state cmis
+  in match (cmis, cmxs) with
       [], _ -> (* no cmi deps left *) state
     | (cmi :: rest_cmis) as all_cmis, all_cmxs ->
         check_conflicts all_cmis state.st_intfs;
@@ -200,28 +218,24 @@ let rec solve_dependencies cat state = function
                 (* so we just ignore the cmi and hope for the best --- we'll
                  * get a load-time error in the worst case *)
                 solve_dependencies cat state (rest_cmis, all_cmxs)
-          | l ->
+          | (hd :: _) as l ->
               let rec loop = function
                   [] -> raise Not_found
                 | lib :: libs ->
                     try
                       check_lib_conflicts state lib;
-                      let state, (cmis, cmxs) = update_deps state all_cmis lib in
-                        solve_dependencies cat state (cmis, cmxs)
+                      let state =
+                        add_lib lib (solve_dependencies cat state (lib_deps lib))
+                      in solve_dependencies cat state (rest_cmis, all_cmxs)
                     with Not_found -> loop libs
               in loop l
 
 let resolve cat state files =
   let units = map_concat extract_units files in
-  (* FIXME: exclusions should be done for each file separately *)
   let exclude_self u = List.filter (fun (name, _) -> name <> u.name) in
-  let cmis =
-    map_concat (fun u -> exclude_self u u.imports_cmi) units |>
-    List.filter (fun (name, digest) -> not (M.mem name state.st_intfs)) in
-    (* TODO: check for & signal CMI incompatibilies, otherwise we get them at
-     * load time*)
+  let cmis = map_concat (fun u -> exclude_self u u.imports_cmi) units in
   let cmxs = map_concat (fun u -> exclude_self u u.imports_cmx) units in
-    solve_dependencies cat state (uniq_deps cmis, uniq_deps cmxs)
+    solve_dependencies cat state (uniq_deps cmis, cmxs)
 
 let do_load file =
   try
