@@ -3,7 +3,28 @@ open Printf
 open Ld_util
 open Ld_known_modules
 
-let catalog = build_catalog ("." :: default_dirs)
+let cache_file = ".ld.ocaml.cache"
+
+let t0 = Unix.gettimeofday ()
+
+let sys_catalog =
+  try
+    load_catalog (Filename.concat (Sys.getenv "HOME") cache_file)
+  with
+    | Not_found (* no HOME *) -> build_catalog default_dirs
+    | Sys_error _ ->
+        let cat = build_catalog default_dirs in
+          save_catalog cat (Filename.concat (Sys.getenv "HOME") cache_file);
+          cat
+
+let catalog =
+  try
+    let extra = Str.split (Str.regexp ":") (Sys.getenv "LD_OCAML_LIBRARY_PATH") in
+      merge_catalogs
+        [ sys_catalog;
+          build_catalog
+            (List.filter (fun d -> not (List.mem d default_dirs)) extra) ]
+  with Not_found -> (* no extra paths *) sys_catalog
 
 let () =
   debug :=
@@ -25,6 +46,7 @@ let () =
     Arg.current := 1 + List.length cmxs;
     let sol = resolve catalog state cmxs in
       if !debug >= 1 then begin
+        eprintf "Needed %8.5fs so far.\n" (Unix.gettimeofday () -. t0);
         eprintf "Loading:\n";
         List.iter (eprintf "  %s\n") cmxs;
         display_solution sol;
