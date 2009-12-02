@@ -12,8 +12,8 @@ OCAMLOPTFLAGS += -g -thread
 %.o: %.c
 	$(OCAMLC) $(mapprefix -ccopt, $(CFLAGS)) -c $^
 
-ld_util.a ld_util.cmxa: ld_header.cmx ld_util.cmx ld_stubs.o
-	ocamlmklib -o ld_util $^
+ld_util.a ld_util.cmxa: ld_header.cmx ld_util.ml ld_util.cmi ld_util.cmx ld_stubs.o
+	ocamlmklib -o ld_util $(filter-out %.ml %.cmi, $^)
 
 OCAML_LIBS[] =
     ld_util
@@ -26,10 +26,10 @@ known_mod_table.cmxs: known_mod_table.ml
 ld_known_modules.ml: gen_known_mod_info known_mod_table.cmxs
 	./gen_known_mod_info known_mod_table.cmxs > $@
 
-ld_ocaml.opt: ld_util.cmxa ld_known_modules.cmx ld_ocaml.cmx ld_ocaml.o
+ld_ocaml.opt: ld_util.cmxa ld_util.ml ld_known_modules.cmx ld_ocaml.cmx ld_ocaml.ml ld_ocaml.o
     $(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) \
 	$(mapprefix -package, $(OCAMLPACKS)) \
-	-cc "gcc -Wl,--whole-archive" -o $@ $(filter-out %.o, $+) \
+	-cc "gcc -Wl,--whole-archive" -o $@ $(filter-out %.o %.ml, $+) \
 	-linkpkg -linkall -ccopt -Wl,--no-whole-archive \
 	-cclib -L.
 
