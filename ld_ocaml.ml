@@ -3,7 +3,7 @@ open Printf
 open Ld_util
 open Ld_known_modules
 
-let catalog = build_catalog ()
+let catalog = build_catalog ("." :: default_dirs)
 
 let () =
   debug :=

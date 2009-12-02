@@ -14,8 +14,14 @@ type lib = { lib_filename : string; lib_units : Ld_header.dynunit list; }
   * info to be printed to stderr. *)
 val debug : int ref
 
-(** Scan the filesystem for .cmxs files and build a DLL catalog. *)
-val build_catalog : ?dirs:string list -> unit -> catalog
+(** Default search path for .cmxs libs. *)
+val default_dirs : string list
+
+(** Scan the given dirs for .cmxs files and build a DLL catalog. *)
+val build_catalog : string list -> catalog
+
+(** Combine multiple catalogs into one. *)
+val merge_catalogs : catalog list -> catalog
 
 (** [resolve catalog init_state files] gives a final state representing the
   * libs that need to be loaded before loading the [files] .cmxs *)

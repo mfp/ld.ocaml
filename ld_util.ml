@@ -109,7 +109,24 @@ type state = {
   st_intfs : Digest.t M.t;
 }
 
+let find_default d k m = try DM.find k m with Not_found -> d
+
 let empty_catalog = { cat_intf_map = DM.empty }
+
+let merge_catalogs l =
+  let module S =
+    Set.Make(struct
+               type t = lib
+               let compare l1 l2 = String.compare l1.lib_filename l2.lib_filename
+             end) in
+  let uniq l = S.elements (List.fold_left (fun s x -> S.add x s) S.empty l) in
+  let intf_map =
+    List.fold_left
+      (fun m { cat_intf_map = m' } ->
+         DM.fold (fun k l m -> DM.add k (uniq (l @ find_default [] k m)) m) m' m)
+      DM.empty
+      l
+  in { cat_intf_map = intf_map }
 
 let hex_to_digest s =
   let digest = String.create 16 in
@@ -196,8 +213,6 @@ let lib_deps lib =
   let cmxs = map_concat (fun u -> u.imports_cmx) lib.lib_units in
     (uniq_deps cmis, cmxs)
 
-let find_default d k m = try DM.find k m with Not_found -> d
-
 let rec solve_dependencies cat state (cmis, cmxs) =
   let cmis = remove_satisfied_deps state cmis
   in match (cmis, cmxs) with
@@ -264,10 +279,12 @@ let subdirs dir =
   with Sys_error _ -> []
 
 let default_dirs =
-  ["."; "/usr/lib/ocaml"; "/usr/local/lib/ocaml"] @
-  subdirs "/usr/lib/ocaml" @ subdirs "/usr/local/lib/ocaml"
+  ["/usr/lib/ocaml"; "/usr/local/lib/ocaml"] @
+    subdirs "/usr/lib/ocaml" @ subdirs "/usr/local/lib/ocaml"
 
-let build_catalog ?(dirs = default_dirs) () =
+let build_catalog dirs =
+  let module S = Set.Make(String) in
+  let uniq l = S.elements (List.fold_left (fun s x -> S.add x s) S.empty l) in
   let cmxs_files =
     map_concat
       (fun dir ->
@@ -275,7 +292,7 @@ let build_catalog ?(dirs = default_dirs) () =
            let files = Array.to_list (Sys.readdir dir) in
              List.map (Filename.concat dir) (List.filter is_cmxs files)
          with Sys_error _ -> [])
-      dirs
+      (uniq dirs)
   in
     List.fold_left
       (fun cat file ->
