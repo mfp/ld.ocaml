@@ -5,6 +5,13 @@ open Ld_known_modules
 
 let cache_file = ".ld.ocaml.cache"
 
+let () =
+  debug :=
+    try
+      int_of_string (Sys.getenv "LD_OCAML_VERBOSE")
+    with Not_found -> 0
+      | _ -> 1
+
 let t0 = Unix.gettimeofday ()
 
 let sys_catalog =
@@ -25,13 +32,6 @@ let catalog =
           build_catalog
             (List.filter (fun d -> not (List.mem d default_dirs)) extra) ]
   with Not_found -> (* no extra paths *) sys_catalog
-
-let () =
-  debug :=
-    try
-      int_of_string (Sys.getenv "LD_OCAML_VERBOSE")
-    with Not_found -> 0
-      | _ -> 1
 
 let () = if !debug >= 2 then display_catalog catalog
 
