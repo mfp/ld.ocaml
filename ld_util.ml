@@ -282,6 +282,24 @@ let default_dirs =
   ["/usr/lib/ocaml"; "/usr/local/lib/ocaml"] @
     subdirs "/usr/lib/ocaml" @ subdirs "/usr/local/lib/ocaml"
 
+let catalog_magic_number = "ld.ocaml2009D001"
+type saved_catalog = string * catalog
+
+let save_catalog cat filename =
+  let oc = open_out_bin filename in
+    Marshal.to_channel oc (catalog_magic_number, cat) [];
+    close_out oc
+
+let load_catalog filename =
+  let ic = open_in filename in
+  let ((magic, cat) : saved_catalog) = Marshal.from_channel ic in
+    close_in ic;
+    if magic <> catalog_magic_number then
+      failwith (sprintf
+                  "Ld_util.load_catalog: %S is not a valid DLL catalog."
+                  filename);
+    cat
+
 let build_catalog dirs =
   let module S = Set.Make(String) in
   let uniq l = S.elements (List.fold_left (fun s x -> S.add x s) S.empty l) in

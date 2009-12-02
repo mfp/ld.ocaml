@@ -20,6 +20,12 @@ val default_dirs : string list
 (** Scan the given dirs for .cmxs files and build a DLL catalog. *)
 val build_catalog : string list -> catalog
 
+(** Load catalog from the given file. *)
+val load_catalog : string -> catalog
+
+(** Save catalog to the specified file. *)
+val save_catalog : catalog -> string -> unit
+
 (** Combine multiple catalogs into one. *)
 val merge_catalogs : catalog list -> catalog
 
