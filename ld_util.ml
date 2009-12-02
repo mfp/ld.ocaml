@@ -205,11 +205,11 @@ let remove_satisfied_deps state cmis =
 let uniq_deps l = DS.elements (List.fold_left (fun s d -> DS.add d s) DS.empty l)
 
 let lib_deps lib =
-  let libcmis = List.map (fun u -> u.name) lib.lib_units in
+  let module S = Set.Make(String) in
+  let libcmis = List.fold_left (fun s u -> S.add u.name s) S.empty lib.lib_units in
   (* must remove list of modules provided by the lib, libcmis, from its deps *)
-  let cmis =
-    map_concat (fun u -> u.imports_cmi) lib.lib_units |>
-    List.filter (fun (name, _) -> not (List.mem name libcmis)) in
+  let remove_self_mods = List.filter (fun (name, _) -> not (S.mem name libcmis)) in
+  let cmis = map_concat (fun u -> remove_self_mods u.imports_cmi) lib.lib_units  in
   let cmxs = map_concat (fun u -> u.imports_cmx) lib.lib_units in
     (uniq_deps cmis, cmxs)
 
