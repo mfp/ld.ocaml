@@ -3,7 +3,6 @@ BYTE_ENABLED = false
 
 USE_OCAMLFIND = true
 OCAMLPACKS[] =
-	bigarray
 	dynlink
 	unix
 	str
