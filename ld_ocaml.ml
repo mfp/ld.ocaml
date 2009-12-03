@@ -45,11 +45,9 @@ let () =
      * code before initializing the caml runtime *)
     Arg.current := 1 + List.length cmxs;
     if !debug >= 1 then
-      eprintf "Built DLL catalog in %8.5fs.\n" (Unix.gettimeofday () -. t0);
-    let t0 = Unix.gettimeofday () in
+      eprintf "Built DLL catalog in %5.3fs.\n" (Unix.gettimeofday () -. t0);
     let sol = resolve catalog state cmxs in
       if !debug >= 1 then begin
-        eprintf "Needed %8.5fs for symbol resolution.\n" (Unix.gettimeofday () -. t0);
         eprintf "Loading:\n";
         List.iter (eprintf "  %s\n") cmxs;
         display_solution sol;

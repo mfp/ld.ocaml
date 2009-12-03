@@ -252,11 +252,19 @@ let rec solve_dependencies cat state (cmis, cmxs) =
 let unresolved_modules st = DS.elements st.st_missing_intfs
 
 let resolve cat state files =
+  let t0 = Unix.gettimeofday () in
   let units = map_concat extract_units files in
   let exclude_self u = List.filter (fun (name, _) -> name <> u.name) in
   let cmis = map_concat (fun u -> exclude_self u u.imports_cmi) units in
   let cmxs = map_concat (fun u -> exclude_self u u.imports_cmx) units in
-    solve_dependencies cat state (uniq_deps cmis, cmxs)
+    if !debug >= 1 then
+      eprintf "Needed %5.3fs to extract dependencies.\n" (Unix.gettimeofday () -. t0);
+    let t0 = Unix.gettimeofday () in
+    let sol = solve_dependencies cat state (uniq_deps cmis, cmxs) in
+      if !debug >= 1 then
+        eprintf "Needed %3.2fms for symbol resolution.\n"
+          ((Unix.gettimeofday () -. t0) *. 1000.);
+      sol
 
 let do_load solution file =
   try
