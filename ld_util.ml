@@ -125,16 +125,20 @@ let empty_state st =
 
 let (|>) x f = f x
 
+let cmx_not_found_crc =
+  "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"
+
 let check_conflicts ~msg deps tbl =
   List.iter
     (fun (name, digest) ->
-       if M.mem name tbl && M.find name tbl <> digest then begin
-         if !debug >= 2 then
-           eprintf
-             "%s conflict: %s %s vs. %s\n"
-             msg name (Digest.to_hex (M.find name tbl)) (Digest.to_hex digest);
-         raise Not_found
-       end)
+       if digest <> cmx_not_found_crc &&
+          M.mem name tbl && M.find name tbl <> digest then begin
+            if !debug >= 2 then
+              eprintf
+                "%s conflict: %s %s vs. %s\n"
+                msg name (Digest.to_hex (M.find name tbl)) (Digest.to_hex digest);
+            raise Not_found
+          end)
     deps
 
 let add_lib lib st =
