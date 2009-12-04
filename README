@@ -31,14 +31,31 @@ ld_ocaml honors these environment variables:
     set to 0 for no output (default), 1 for information about the libs that
     will be loaded, 2 for debug info
 
+ LD_OCAML_CACHE
+
+    name of the cache file (default: $NAME/.ld.ocaml.cache)
+
  LD_OCAML_LIBRARY_PATH
 
     list of extra paths (separated by :) where .cmxs libraries can be found,
-    in addition to the standard directories
+    in addition to the standard directories. The information about these libs
+    will not be saved in the cache.
 
-ld_ocaml caches the system DLL catalog to $HOME/.ld.ocaml.cache.
-Delete that file to force a system catalog rebuild when new libraries are
-installed.
+ LD_OCAML_SYS_LIBRARY_PATH
+
+    list of paths (separated by :) where system .cmxs libraries can be
+    found. The information about these libs will be saved in the cache.
+    (defaults to (/usr/lib/ocaml, /usr/local/lib/ocaml, and their subdirs))
+
+ LD_OCAML_EXTRA_SYS_LIBRARY_PATH
+
+    list of extra paths (separated by :) where system .cmxs libraries can be
+    found. The information about these libs will be saved in the cache.
+
+
+ld_ocaml caches the system DLL catalog to the file specified in LD_OCAML_CACHE
+($HOME/.ld.ocaml.cache by default).  Delete that file to force a system
+catalog rebuild when new libraries are installed.
 
 Creating the .cmxs libraries
 ----------------------------

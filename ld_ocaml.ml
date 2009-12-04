@@ -3,7 +3,13 @@ open Printf
 open Ld_util
 open Ld_known_modules
 
-let cache_file = ".ld.ocaml.cache"
+let cache_file =
+  try
+    Some (Sys.getenv "LD_OCAML_CACHE")
+  with Not_found ->
+    try
+      Some (Filename.concat (Sys.getenv "HOME") ".ld.ocaml.cache")
+    with Not_found -> None
 
 let () =
   debug :=
@@ -12,17 +18,28 @@ let () =
     with Not_found -> 0
       | _ -> 1
 
+let sys_dll_dirs =
+  try
+    Str.split (Str.regexp ":") (Sys.getenv "LD_OCAML_SYS_LIBRARY_PATH")
+  with Not_found -> default_dirs
+
+let sys_dll_dirs =
+  try
+    Str.split (Str.regexp ":") (Sys.getenv "LD_OCAML_EXTRA_SYS_LIBRARY_PATH") @ sys_dll_dirs
+  with Not_found -> sys_dll_dirs
+
 let t0 = Unix.gettimeofday ()
 
-let sys_catalog =
-  try
-    load_catalog (Filename.concat (Sys.getenv "HOME") cache_file)
-  with
-    | Not_found (* no HOME *) -> build_catalog default_dirs
-    | Sys_error _ ->
-        let cat = build_catalog default_dirs in
-          save_catalog cat (Filename.concat (Sys.getenv "HOME") cache_file);
-          cat
+let sys_catalog = match cache_file with
+    None -> build_catalog sys_dll_dirs
+  | Some file ->
+      try
+        load_catalog file
+      with
+        | Sys_error _ ->
+            let cat = build_catalog sys_dll_dirs in
+              save_catalog cat file;
+              cat
 
 let catalog =
   try
