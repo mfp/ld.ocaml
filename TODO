@@ -1,7 +1,8 @@
 - : pending
 + : done
 
-- use libelf for manual header extraction instead of objdump/objcopy hack
++ use libelf for manual header extraction instead of objdump/objcopy hack
+  (used GNU BFD)
 + cache DLL catalog
 + better cmdline handling in ld_ocaml: whether to show debug info, extra
   paths, etc. Maybe use environment vars instead? (used envvars in the end)

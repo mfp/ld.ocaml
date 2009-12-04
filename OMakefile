@@ -13,7 +13,7 @@ OCAMLOPTFLAGS += -g -thread
 	$(OCAMLC) $(mapprefix -ccopt, $(CFLAGS)) -c $^
 
 ld_util.a ld_util.cmxa: ld_header.cmx ld_util.ml ld_util.cmi ld_util.cmx ld_stubs.o
-	ocamlmklib -o ld_util $(filter-out %.ml %.cmi, $^)
+	ocamlmklib -o ld_util $(filter-out %.ml %.cmi, $^) -lbfd
 
 OCAML_LIBS[] =
     ld_util

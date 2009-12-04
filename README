@@ -8,7 +8,9 @@ proceeds to load them all in order.
 
 Requirements
 ------------
-OCaml >= 3.10 with native dynamic linking support (.cmxs files).
+* OCaml >= 3.10 with native dynamic linking support (.cmxs files)
+* GNU BFD (available as binutils-dev in Debian)
+* OMake for building
 
 Building
 --------

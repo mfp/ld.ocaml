@@ -4,6 +4,7 @@ open Ld_header
 let debug = ref 0
 
 external ld_extract_headers : string -> string = "ld_extract_headers"
+external ld_plugin_header_offset : string -> int = "ld_get_caml_plugin_header_offset"
 
 let matches re s =
   try
@@ -19,41 +20,15 @@ let (-!) = Int64.sub
 
 (* when we cannot get the symbol with dlopen, because some symbol in the .cmxs
  * cannot be resolved (e.g. there's a reference to a primitive defined in
- * another library), we do it manually by:
- * 1) obtaining the .data offset with objdump
- * 2) obtaining the address of the caml_plugin_header symbol
- * 3) extracting the data using objcopy
- *)
-(* TODO: use libelf to do this without relying on external programs, for speed
- * and reliability *)
+ * another library), so we locate the offset of caml_plugin_header in the file
+ * manually using BFD *)
 let manual_header_extraction filename : dynheader =
-  let rec data_section_offset ic = match input_line ic with
-      l when matches (Str.regexp "\\.data") l -> begin
-        match Str.split (Str.regexp "[ \t]+") l with
-            _::_::_::_::addr::off::_ -> (hex_to_i64 addr, hex_to_i64 off)
-          | _ -> failwith "Couldn't find .data offset"
-      end
-    | _ -> data_section_offset ic in
-
-  let rec header_addr ic = match input_line ic with
-      l when matches (Str.regexp "caml_plugin_header") l -> begin
-        match Str.split (Str.regexp "[ \t]+") l with
-            addr::_ -> hex_to_i64 addr
-          | _ -> failwith "Couldn't find caml_plugin_header symbol."
-      end
-    | _ -> header_addr ic in
-
-  let ic = Unix.open_process_in (sprintf "objdump -h %S" filename) in
-  let data_addr, file_off = close_finally data_section_offset ic in
-  if !debug >= 2 then
-    eprintf "Got .data addr and offset: %Lx %Lx\n" data_addr file_off;
-  let ic = Unix.open_process_in (sprintf "objdump -T %S" filename) in
-  let header_addr = close_finally header_addr ic in
-  if !debug >= 2 then eprintf "Got caml_plugin_header offset: %Lx\n" header_addr;
-  let off = Int64.to_int (file_off +! header_addr -! data_addr) in
-    close_finally
-      (fun ic -> ignore (seek_in ic off); input_value ic)
-      (open_in filename)
+  match ld_plugin_header_offset filename with
+      -1 -> failwith (sprintf "Could not find caml_plugin_header for %S." filename)
+    | off ->
+        close_finally
+          (fun ic -> ignore (seek_in ic off); input_value ic)
+          (open_in filename)
 
 let extract_headers file : dynheader =
   try
