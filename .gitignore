@@ -10,3 +10,4 @@
 core
 /ld_known_modules.ml
 /gen_known_mod_info
+/ld_ocaml

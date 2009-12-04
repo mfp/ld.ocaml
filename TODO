@@ -6,6 +6,6 @@
 + cache DLL catalog
 + better cmdline handling in ld_ocaml: whether to show debug info, extra
   paths, etc. Maybe use environment vars instead? (used envvars in the end)
-- Sys.argv rewriting
++ Sys.argv rewriting
 
 

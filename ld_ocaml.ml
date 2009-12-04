@@ -3,6 +3,8 @@ open Printf
 open Ld_util
 open Ld_known_modules
 
+external get_cmxs_to_load : unit -> string array = "ld_get_cmxs_to_load"
+
 let cache_file =
   try
     Some (Sys.getenv "LD_OCAML_CACHE")
@@ -53,14 +55,12 @@ let catalog =
 let () = if !debug >= 2 then display_catalog catalog
 
 let () =
+  let a_to_s l = String.concat "; " (List.map (sprintf "%S") l) in
+  let cmxs = Array.to_list (get_cmxs_to_load ()) in
+  if !debug >= 2 then
+    eprintf "Sys.argv: [| %s |]\nCMXS: [| %s |]\n"
+      (a_to_s (Array.to_list Sys.argv)) (a_to_s cmxs);
   let state = state_of_known_modules ~known_interfaces ~known_implementations in
-  let rec extract_cmxs_args = function
-    | f :: tl when is_cmxs f -> f :: extract_cmxs_args tl
-    | _ -> [] in
-  let cmxs = extract_cmxs_args (List.tl (Array.to_list (Sys.argv))) in
-    (* TODO: should rewrite Sys.argv instead, need to extract cmxs args in C
-     * code before initializing the caml runtime *)
-    Arg.current := List.length cmxs;
     if !debug >= 1 then
       eprintf "Built DLL catalog in %5.3fs.\n" (Unix.gettimeofday () -. t0);
     let sol = resolve catalog state cmxs in
@@ -71,4 +71,5 @@ let () =
         flush stderr;
       end;
       load_deps sol;
-      List.iter (do_load sol) cmxs
+      List.iter (do_load sol) cmxs;
+      exit 0

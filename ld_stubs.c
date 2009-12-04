@@ -11,6 +11,9 @@
 #include <bfd.h>
 #include <string.h>
 
+#include <caml/callback.h>
+
+
 void *ld_dlsym(void * handle, char * name);
 void *ld_dlopen(char * libname);
 void ld_dlclose(void * handle);
@@ -90,3 +93,13 @@ CAMLprim value ld_get_caml_plugin_header_offset(value file)
  return Val_long(extract_caml_plugin_offset(String_val(file)));
 }
 
+char **ld_cmxs_to_load;
+
+CAMLprim
+value ld_get_cmxs_to_load(value unit)
+{
+  CAMLparam0();
+  CAMLlocal1(ret);
+  ret = caml_copy_string_array((char const **) ld_cmxs_to_load);
+  CAMLreturn(ret);
+}

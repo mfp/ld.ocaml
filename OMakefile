@@ -26,18 +26,32 @@ known_mod_table.cmxs: known_mod_table.ml
 ld_known_modules.ml: gen_known_mod_info known_mod_table.cmxs
 	./gen_known_mod_info known_mod_table.cmxs > $@
 
-ld_ocaml.opt: ld_util.cmxa ld_util.ml \
-	      ld_known_modules.cmx ld_known_modules.ml \
-	      ld_ocaml.cmx ld_ocaml.ml ld_ocaml.o
+ld_ocaml_ml.o: ld_util.ml ld_util.cmxa \
+	       ld_known_modules.o ld_known_modules.cmx ld_known_modules.ml \
+	       ld_ocaml.o ld_ocaml.cmx ld_ocaml.ml
     $(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) \
 	$(mapprefix -package, $(OCAMLPACKS)) \
+	-output-obj \
 	-cc "gcc -Wl,--whole-archive" -o $@ $(filter-out %.o %.ml, $+) \
 	-linkpkg -linkall -ccopt -Wl,--no-whole-archive \
 	-cclib -L.
 
+%.o: %.c
+	$(OCAMLFIND) ocamlc -c $<
+
+libmyasmrun.a: $(shell ocamlc -where)/libasmrun.a
+	cp $< $@
+	ar d $@ main.o
+
+ld_ocaml: libmyasmrun.a ld_ocaml_main.o ld_ocaml_ml.o ld_stubs.o
+    gcc -rdynamic \
+	-Wl,--whole-archive -o $@  -L$(shell ocamlc -where) \
+	-lunix -lstr -lthreadsnat -lpthread \
+	$+ -L. -Wl,--no-whole-archive -lm -ldl -lbfd
+
 OCamlProgram(gen_known_mod_info, gen_known_mod_info)
 
-.DEFAULT: ld_util.cmxa ld_ocaml.opt
+.DEFAULT: ld_ocaml
 
 .PHONY: clean
 
