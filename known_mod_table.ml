@@ -9,8 +9,12 @@ module Pervasives = Pervasives
 module CamlinternalLazy = CamlinternalLazy
 module CamlinternalOO = CamlinternalOO
 
-module Thread = Thread
+(* thread *)
+module Condition = Condition
+module Event = Event
 module Mutex = Mutex
+module Thread = Thread
+module ThreadUnix = Unix
 
 (* stdlib *)
 module Arg = Arg
