@@ -5,21 +5,17 @@ let debug = ref 0
 
 external ld_extract_headers : string -> string = "ld_extract_headers"
 
-let readfile file =
-  let b = Buffer.create 13 in
-  let buf = String.create 1024 in
-  let ic = open_in file in
-  let rec loop () = match input ic buf 0 1024 with
-      0 -> close_in ic; Buffer.contents b
-    | n -> Buffer.add_substring b buf 0 n; loop ()
-  in loop ()
-
 let matches re s =
   try
     ignore (Str.search_forward re s 0); true
   with Not_found -> false
 
-let finally fin f x = try let y = f x in fin (); y with e -> fin (); raise e
+let close_finally f ic =
+  try let y = f ic in close_in ic; y with e -> close_in ic; raise e
+
+let hex_to_i64 s = Int64.of_string ("0x" ^ s)
+let (+!) = Int64.add
+let (-!) = Int64.sub
 
 (* when we cannot get the symbol with dlopen, because some symbol in the .cmxs
  * cannot be resolved (e.g. there's a reference to a primitive defined in
@@ -30,48 +26,45 @@ let finally fin f x = try let y = f x in fin (); y with e -> fin (); raise e
  *)
 (* TODO: use libelf to do this without relying on external programs, for speed
  * and reliability *)
-let manual_header_extraction filename =
+let manual_header_extraction filename : dynheader =
   let rec data_section_offset ic = match input_line ic with
       l when matches (Str.regexp "\\.data") l -> begin
         match Str.split (Str.regexp "[ \t]+") l with
-            _::_::_::off::_ -> Scanf.sscanf off "%x" (fun n -> n)
+            _::_::_::_::addr::off::_ -> (hex_to_i64 addr, hex_to_i64 off)
           | _ -> failwith "Couldn't find .data offset"
       end
     | _ -> data_section_offset ic in
 
-  let rec header_offset ic = match input_line ic with
+  let rec header_addr ic = match input_line ic with
       l when matches (Str.regexp "caml_plugin_header") l -> begin
         match Str.split (Str.regexp "[ \t]+") l with
-            off::_ -> Scanf.sscanf off "%x" (fun n -> n)
+            addr::_ -> hex_to_i64 addr
           | _ -> failwith "Couldn't find caml_plugin_header symbol."
       end
-    | _ -> header_offset ic in
+    | _ -> header_addr ic in
 
   let ic = Unix.open_process_in (sprintf "objdump -h %S" filename) in
-  let data_off = finally (fun () -> close_in ic) data_section_offset ic in
-  if !debug >= 2 then eprintf "Got .data offset: %x\n" data_off;
+  let data_addr, file_off = close_finally data_section_offset ic in
+  if !debug >= 2 then
+    eprintf "Got .data addr and offset: %Lx %Lx\n" data_addr file_off;
   let ic = Unix.open_process_in (sprintf "objdump -T %S" filename) in
-  let header_off = finally (fun () -> close_in ic) header_offset ic in
-  if !debug >= 2 then eprintf "Got caml_plugin_header offset: %x\n" header_off;
-  let actual_off = header_off - data_off in
-  let tmp = Filename.temp_file (Filename.basename filename) "_ldocaml" in
-    ignore
-      (Sys.command
-         (sprintf "objcopy -O binary -j .data %S %S" filename tmp));
-    let data = readfile tmp in
-      Sys.remove tmp;
-      String.sub data actual_off (String.length data - actual_off)
+  let header_addr = close_finally header_addr ic in
+  if !debug >= 2 then eprintf "Got caml_plugin_header offset: %Lx\n" header_addr;
+  let off = Int64.to_int (file_off +! header_addr -! data_addr) in
+    close_finally
+      (fun ic -> ignore (seek_in ic off); input_value ic)
+      (open_in filename)
 
-let extract_headers file =
+let extract_headers file : dynheader =
   try
-    ld_extract_headers file
-  with _ -> manual_header_extraction file
+    Marshal.from_string (ld_extract_headers file) 0
+  with _ ->
+    manual_header_extraction file
 
 let extract_units filename =
   let dll = dll_filename filename in
     try
-      let data = extract_headers dll in
-      let header : dynheader = Marshal.from_string data 0 in
+      let header = extract_headers dll in
         if header.magic <> dyn_magic_number then
           failwith (filename ^ " is not an OCaml shared library.");
         header.units
