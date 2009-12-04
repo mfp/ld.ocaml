@@ -60,7 +60,7 @@ let () =
   let cmxs = extract_cmxs_args (List.tl (Array.to_list (Sys.argv))) in
     (* TODO: should rewrite Sys.argv instead, need to extract cmxs args in C
      * code before initializing the caml runtime *)
-    Arg.current := 1 + List.length cmxs;
+    Arg.current := List.length cmxs;
     if !debug >= 1 then
       eprintf "Built DLL catalog in %5.3fs.\n" (Unix.gettimeofday () -. t0);
     let sol = resolve catalog state cmxs in
