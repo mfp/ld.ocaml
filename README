@@ -46,11 +46,13 @@ ld_ocaml honors these environment variables:
     list of paths (separated by :) where system .cmxs libraries can be
     found. The information about these libs will be saved in the cache.
     (defaults to (/usr/lib/ocaml, /usr/local/lib/ocaml, and their subdirs))
+    (Note: you should use absolute paths.)
 
  LD_OCAML_EXTRA_SYS_LIBRARY_PATH
 
     list of extra paths (separated by :) where system .cmxs libraries can be
     found. The information about these libs will be saved in the cache.
+    (Note: you should use absolute paths.)
 
 
 ld_ocaml caches the system DLL catalog to the file specified in LD_OCAML_CACHE
