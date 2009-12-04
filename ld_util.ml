@@ -125,11 +125,16 @@ let empty_state st =
 
 let (|>) x f = f x
 
-let check_conflicts deps tbl =
+let check_conflicts ~msg deps tbl =
   List.iter
     (fun (name, digest) ->
-       if M.mem name tbl && M.find name tbl <> digest then
-         raise Not_found)
+       if M.mem name tbl && M.find name tbl <> digest then begin
+         if !debug >= 2 then
+           eprintf
+             "%s conflict: %s %s vs. %s\n"
+             msg name (Digest.to_hex (M.find name tbl)) (Digest.to_hex digest);
+         raise Not_found
+       end)
     deps
 
 let add_lib lib st =
@@ -188,8 +193,8 @@ let rec solve_dependencies ?parent cat state (cmis, cmxs) =
   in match (cmis, cmxs) with
       [], _ -> (* no cmi deps left *) state
     | (((name, digest) as cmi) :: rest_cmis) as all_cmis, all_cmxs ->
-        check_conflicts all_cmis state.st_intfs;
-        check_conflicts all_cmxs state.st_impls;
+        check_conflicts ~msg:"CMI" all_cmis state.st_intfs;
+        check_conflicts ~msg:"CMX" all_cmxs state.st_impls;
         match find_default [] cmi cat.cat_intf_map with
             [] ->
                 if !debug >= 1 then
