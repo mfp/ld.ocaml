@@ -193,6 +193,9 @@ let lib_deps lib =
     (uniq_deps cmis, cmxs)
 
 let rec solve_dependencies ?parent cat state (cmis, cmxs) =
+  if !debug >= 3 then
+    eprintf "solve dependencies for for %s\n"
+      (match parent with None -> "" | Some p -> p);
   let cmis = remove_satisfied_deps state cmis
   in match (cmis, cmxs) with
       [], _ -> (* no cmi deps left *) state
