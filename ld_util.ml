@@ -226,7 +226,8 @@ let resolve cat state files =
   let cmis = map_concat (fun u -> exclude_self u u.imports_cmi) units in
   let cmxs = map_concat (fun u -> exclude_self u u.imports_cmx) units in
     if !debug >= 1 then
-      eprintf "Needed %5.3fs to extract dependencies.\n" (Unix.gettimeofday () -. t0);
+      eprintf "Needed %3.2fms to extract dependencies.\n"
+        ((Unix.gettimeofday () -. t0) *. 1000.);
     let t0 = Unix.gettimeofday () in
     let sol = solve_dependencies cat state (uniq_deps cmis, cmxs) in
       if !debug >= 1 then
