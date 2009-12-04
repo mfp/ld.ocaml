@@ -192,10 +192,9 @@ let lib_deps lib =
   let cmxs = map_concat (fun u -> u.imports_cmx) lib.lib_units in
     (uniq_deps cmis, cmxs)
 
-let rec solve_dependencies ?parent cat state (cmis, cmxs) =
+let rec solve_dependencies cat state ~parent (cmis, cmxs) =
   if !debug >= 3 then
-    eprintf "solve dependencies for for %s\n"
-      (match parent with None -> "" | Some p -> p);
+    eprintf "solve dependencies for for %s\n" parent;
   let cmis = remove_satisfied_deps state cmis
   in match (cmis, cmxs) with
       [], _ -> (* no cmi deps left *) state
@@ -205,11 +204,8 @@ let rec solve_dependencies ?parent cat state (cmis, cmxs) =
         match find_default [] cmi cat.cat_intf_map with
             [] ->
                 if !debug >= 1 then
-                  eprintf "No implementation found for CMI %s (%s)%s\n"
-                    name (Digest.to_hex digest)
-                    (match parent with
-                         None -> ""
-                       | Some p ->sprintf "\n needed for %s" p);
+                  eprintf "No implementation found for CMI %s (%s) needed for %s\n"
+                    name (Digest.to_hex digest) parent;
                 (* would be  raise Not_found  if all imported CMIs were
                  * guaranteed to be provided by some lib, but some aren't
                  * (e.g. Calendar_sig) since they only contain signatures and
@@ -217,37 +213,37 @@ let rec solve_dependencies ?parent cat state (cmis, cmxs) =
                 (* so we just ignore the cmi and hope for the best --- we'll
                  * get a load-time error in the worst case *)
                 solve_dependencies cat
-                  ?parent
+                  ~parent
                   { state with st_missing_intfs = DS.add cmi state.st_missing_intfs }
                   (rest_cmis, all_cmxs)
-          | (hd :: _) as l ->
-              let rec loop = function
-                  [] ->
-                    if !debug >= 2 then
-                      eprintf "No way to load %s(%s).\n"
-                        (fst cmi) (Digest.to_hex (snd cmi));
-                    raise Not_found
-                | lib :: libs ->
-                    let valid_lib =
-                      try
-                        if !debug >= 2 then
-                          eprintf "Trying to satisfy %s(%s) with %s.\n"
-                            name (Digest.to_hex digest) lib.lib_filename;
-                        check_lib_conflicts state lib;
-                        Some lib
-                      with Not_found ->
-                        if !debug >= 2 then
-                          eprintf "Rejected %s for %s(%s).\n"
-                            lib.lib_filename name (Digest.to_hex digest);
-                        None
-                    in match valid_lib with
-                        None -> loop libs
-                      | Some lib ->
-                          let state =
-                            let parent = lib.lib_filename in
-                              add_lib lib (solve_dependencies ~parent cat state (lib_deps lib))
-                          in solve_dependencies ?parent cat state (rest_cmis, all_cmxs)
-              in loop l
+          | l ->
+              let lib = pick_valid_lib cat state ~parent cmi l in
+              let state =
+                let parent = lib.lib_filename in
+                  add_lib lib (solve_dependencies ~parent cat state (lib_deps lib))
+              in solve_dependencies ~parent cat state (rest_cmis, all_cmxs)
+
+and pick_valid_lib cat state ~parent (name, digest) = function
+    [] ->
+      if !debug >= 2 then
+        eprintf "No way to load %s(%s).\n" name (Digest.to_hex digest);
+      raise Not_found
+  | lib :: libs ->
+      let valid_lib =
+        try
+          if !debug >= 2 then
+            eprintf "Trying to satisfy %s(%s) with %s.\n"
+              name (Digest.to_hex digest) lib.lib_filename;
+          check_lib_conflicts state lib;
+          Some lib
+        with Not_found ->
+          if !debug >= 2 then
+            eprintf "Rejected %s for %s(%s).\n"
+              lib.lib_filename name (Digest.to_hex digest);
+          None
+      in match valid_lib with
+          None -> pick_valid_lib cat state parent (name, digest) libs
+        | Some lib -> lib
 
 let unresolved_modules st = DS.elements st.st_missing_intfs
 
@@ -261,8 +257,8 @@ let resolve cat state files =
       eprintf "Needed %3.2fms to extract dependencies.\n"
         ((Unix.gettimeofday () -. t0) *. 1000.);
     let t0 = Unix.gettimeofday () in
-    let sol = solve_dependencies ~parent:(String.concat ", " files)
-                cat state (uniq_deps cmis, cmxs)
+    let sol = solve_dependencies cat state
+                ~parent:(String.concat ", " files) (uniq_deps cmis, cmxs)
     in
       if !debug >= 1 then
         eprintf "Needed %3.2fms for symbol resolution.\n"
