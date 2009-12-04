@@ -221,20 +221,25 @@ let rec solve_dependencies ?parent cat state (cmis, cmxs) =
                         (fst cmi) (Digest.to_hex (snd cmi));
                     raise Not_found
                 | lib :: libs ->
-                    try
-                      if !debug >= 2 then
-                        eprintf "Trying to satisfy %s(%s) with %s.\n"
-                          name (Digest.to_hex digest) lib.lib_filename;
-                      check_lib_conflicts state lib;
-                      let state =
-                        let parent = lib.lib_filename in
-                          add_lib lib (solve_dependencies ~parent cat state (lib_deps lib))
-                      in solve_dependencies ?parent cat state (rest_cmis, all_cmxs)
-                    with Not_found ->
-                      if !debug >= 2 then
-                        eprintf "Rejected %s for %s(%s).\n"
-                          lib.lib_filename name (Digest.to_hex digest);
-                      loop libs
+                    let valid_lib =
+                      try
+                        if !debug >= 2 then
+                          eprintf "Trying to satisfy %s(%s) with %s.\n"
+                            name (Digest.to_hex digest) lib.lib_filename;
+                        check_lib_conflicts state lib;
+                        Some lib
+                      with Not_found ->
+                        if !debug >= 2 then
+                          eprintf "Rejected %s for %s(%s).\n"
+                            lib.lib_filename name (Digest.to_hex digest);
+                        None
+                    in match valid_lib with
+                        None -> loop libs
+                      | Some lib ->
+                          let state =
+                            let parent = lib.lib_filename in
+                              add_lib lib (solve_dependencies ~parent cat state (lib_deps lib))
+                          in solve_dependencies ?parent cat state (rest_cmis, all_cmxs)
               in loop l
 
 let unresolved_modules st = DS.elements st.st_missing_intfs
