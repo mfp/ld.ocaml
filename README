@@ -33,7 +33,7 @@ ld_ocaml honors these environment variables:
 
  LD_OCAML_CACHE
 
-    name of the cache file (default: $NAME/.ld.ocaml.cache)
+    name of the cache file (default: $HOME/.ld.ocaml.cache)
 
  LD_OCAML_LIBRARY_PATH
 
