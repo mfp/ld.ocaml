@@ -71,6 +71,28 @@ For instance, AAA batteries needs camomile.cmxs and nums.cmxs, which can be
 built that way (other modules, including Thread, Dynlink, Unix and Str, are
 already included in ld_ocaml's runtime).
 
+If you use OMake, you can use these rules to generate all the .cmxs files for
+all the OCAMLPACKS at once under libs/:
+
+  # the target used to build all the .cmxs
+  .PHONY: libs
+
+  # get all the packages required recursively
+  ALL_PACKS = \
+      $(shell ocamlfind query -predicates "mt,native,mt_posix" -r \
+          -p-format $(OCAMLPACKS) | sort -u)
+
+  # for each foo.cmxs, define a    libs: libs/foo.cmxs  dependency
+  # and a  libs/foo.cmxs  target
+  foreach(pack, $(ALL_PACKS))
+      ARCH = $(shell ocamlfind query -predicates "mt,native,mt_posix" \
+                 -a-format $(pack))
+      DST = libs/$(pack).cmxs
+      libs: $(DST)
+      $(DST):
+          $(OCAMLFIND) ocamlopt -shared $(OCAMLFLAGS) -o $@ \
+            -package $(pack) $(ARCH) -linkall
+
 Program compilation
 -------------------
 Let's suppose you want to compile a program that links against AAA Bateries.
