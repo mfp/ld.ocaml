@@ -63,13 +63,23 @@ let () =
   let state = state_of_known_modules ~known_interfaces ~known_implementations in
     if !debug >= 1 then
       eprintf "Built DLL catalog in %5.3fs.\n" (Unix.gettimeofday () -. t0);
-    let sol = resolve catalog state cmxs in
-      if !debug >= 1 then begin
-        eprintf "Loading:\n";
-        List.iter (eprintf "  %s\n") cmxs;
-        display_solution sol;
-        flush stderr;
-      end;
-      load_deps sol;
-      List.iter (do_load sol) cmxs;
-      exit 0
+    let sol =
+      try
+        Some (resolve catalog state cmxs)
+      with Not_found -> None
+    in match sol with
+        Some sol ->
+          if !debug >= 1 then begin
+            eprintf "Loading:\n";
+            List.iter (eprintf "  %s\n") cmxs;
+            display_solution sol;
+            flush stderr;
+          end;
+          load_deps sol;
+          List.iter (do_load sol) cmxs;
+          exit 0
+      | None ->
+          eprintf "Could not find a way to load the specified CMXS files.\n";
+          eprintf "Run with LD_OCAML_VERBOSE=2 to see the module conflict(s) \
+                   that caused this.\n";
+          exit 1
