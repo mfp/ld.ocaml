@@ -174,11 +174,16 @@ let remove_satisfied_deps state cmis =
     (fun (name, digest) ->
        if not (M.mem name intfs || M.mem name runtime) then true
        else
-         if M.mem name intfs && M.find name intfs = digest ||
-            M.mem name runtime && M.find name runtime = digest then
+         let prev_digest =
+           if M.mem name intfs then M.find name intfs else M.find name runtime
+         in if prev_digest = digest then
            false
-         else
-           raise Not_found)
+         else begin
+           if !debug >= 2 then
+             eprintf "Conflict detected: module %s, %s vs. %s.\n"
+               name (Digest.to_hex digest) (Digest.to_hex prev_digest);
+           raise Not_found
+         end)
     cmis
 
 let uniq_deps l = DS.elements (List.fold_left (fun s d -> DS.add d s) DS.empty l)
