@@ -18,6 +18,10 @@ Building
 
   $ omake
 
+Installing
+----------
+Copy the  ld_ocaml  executable to some directory in your PATH.
+
 Usage
 -----
 
