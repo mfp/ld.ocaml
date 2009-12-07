@@ -71,16 +71,17 @@ Creating the .cmxs libraries
 ----------------------------
 Given a .cmxa file with PIC code, you can create the cmxs easily:
 
-  ocamlopt -shared -o foo.cmxs foo.cmxa
+  ocamlopt -shared -o foo.cmxs foo.cmxa -linkall
 
 For instance, if you want to run a program that depends on AAA batteries,
 itself dependent on camomile.cmxs and nums.cmxs, you can build the required
 .cmxs libs as follows (other libs, including Thread, Dynlink, Unix and Str,
 are already included in ld_ocaml's runtime):
 
-  ocamlfind ocamlopt -package camomile -shared -o camomile.cmxs camomile.cmxa
-  ocamlfind ocamlopt -package num -shared -o nums.cmxs nums.cmxa
-  ocamlfind ocamlopt -package aaa -shared -o aaa.cmxs aaa.cmxa
+  ocamlfind ocamlopt -package camomile -shared -o camomile.cmxs \
+      camomile.cmxa -linkall
+  ocamlfind ocamlopt -package num -shared -o nums.cmxs nums.cmxa -linkall
+  ocamlfind ocamlopt -package aaa -shared -o aaa.cmxs aaa.cmxa -linkall
 
 Debian is already starting to distribute .cmxs files in OCaml library
 packages. Presumably, all packages in Debian and other distributions will
@@ -106,7 +107,7 @@ the OCAMLPACKS at once under libs/:
       libs: $(DST)
       $(DST):
           $(OCAMLFIND) ocamlopt -shared $(OCAMLFLAGS) -o $@ \
-            -package $(pack) $(ARCH)
+            -package $(pack) $(ARCH) -linkall
 
 Program compilation
 -------------------
