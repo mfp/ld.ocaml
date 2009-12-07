@@ -1,3 +1,5 @@
+(* Copyright (c) 2009 Mauricio Fernández <mfp@acm.org> *)
+
 open Printf
 open Ld_header
 

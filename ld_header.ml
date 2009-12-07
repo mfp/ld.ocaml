@@ -1,3 +1,5 @@
+(* Copyright (c) 2009 Mauricio Fernández <mfp@acm.org> *)
+
 (************************** copied from netdynlink.ml ************************)
 
 type dynunit = {

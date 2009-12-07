@@ -1,3 +1,5 @@
+(* Copyright (c) 2009 Mauricio Fernández <mfp@acm.org> *)
+
 (* refer to all the std modules linked into ld_ocaml, so we can extract the
  * information automatically and create known module table *)
 
