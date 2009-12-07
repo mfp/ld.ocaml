@@ -3,8 +3,6 @@
 open Ld_header
 open Printf
 
-external ld_extract_headers : string -> string = "ld_extract_headers"
-
 let gencode units =
   let dump f =
     List.iter

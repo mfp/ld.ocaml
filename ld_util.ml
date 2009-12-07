@@ -5,7 +5,6 @@ open Ld_header
 
 let debug = ref 0
 
-external ld_extract_headers : string -> string = "ld_extract_headers"
 external ld_plugin_header_offset : string -> int = "ld_get_caml_plugin_header_offset"
 
 let matches re s =
@@ -32,11 +31,7 @@ let manual_header_extraction filename : dynheader =
           (fun ic -> ignore (seek_in ic off); input_value ic)
           (open_in filename)
 
-let extract_headers file : dynheader =
-  try
-    Marshal.from_string (ld_extract_headers file) 0
-  with _ ->
-    manual_header_extraction file
+let extract_headers file = manual_header_extraction file
 
 let extract_units filename =
   let dll = dll_filename filename in
