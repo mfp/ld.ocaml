@@ -1,14 +1,15 @@
 
-Dynamic loader for OCaml.
+Dynamic linker/loader for OCaml.
 
-Given a list of cmxs objects (typically only one, corresponding to a program
-to execute), ld_ocaml scans the filesystem to find the available (.cmxs)
-libraries, infers which are needed in order to load the objects, and then
-proceeds to load them all in order.
+ld.ocaml does for OCaml native code plugins (.cmxs files) what ld.so does for
+shared libraries.  Given a list of cmxs objects (typically only one,
+corresponding to a program to execute), ld_ocaml scans the filesystem to find
+the available (.cmxs) libraries, infers which are needed in order to load the
+objects, and then proceeds to load them all in order.
 
 Requirements
 ------------
-* OCaml >= 3.10 with native dynamic linking support (.cmxs files)
+* OCaml >= 3.11 with native Dynlink (.cmxs) support
 * GNU BFD (available as binutils-dev in Debian)
 * OMake for building
 
@@ -22,9 +23,10 @@ Usage
 
   ld_ocaml foo.cmxs -other --options --are --ignored
 
-looks for .cmxs libraries and loads those required by foo.cmxs. Arg.current is
-updated to point to the first non-cmxs option, so foo.cmxs can use Arg to
-parse the remaining command line.
+looks for .cmxs libraries and loads those required by foo.cmxs. Sys.argv is
+modified so that foo.cmxs becomes Sys.argv.(0).
+You can also specify multiple .cmxs files to be loaded in order. The last one
+will become Sys.argv.(0).
 
 ld_ocaml honors these environment variables:
 
@@ -57,22 +59,31 @@ ld_ocaml honors these environment variables:
     (Note: you should use absolute paths.)
 
 
-ld_ocaml caches the system DLL catalog to the file specified in LD_OCAML_CACHE
-($HOME/.ld.ocaml.cache by default).  Delete that file to force a system
+ld_ocaml caches the system DLL catalog in the file specified in LD_OCAML_CACHE
+($HOME/.ld.ocaml.cache by default).  Delete that file to force a system DLL
 catalog rebuild when new libraries are installed.
 
 Creating the .cmxs libraries
 ----------------------------
-Given a .cmxa file with PIC code, you can create the cmxs as follows:
+Given a .cmxa file with PIC code, you can create the cmxs easily:
 
-  ocamlopt -shared -o foo.cmxs foo.cmxa -linkall
+  ocamlopt -shared -o foo.cmxs foo.cmxa
 
-For instance, AAA batteries needs camomile.cmxs and nums.cmxs, which can be
-built that way (other modules, including Thread, Dynlink, Unix and Str, are
-already included in ld_ocaml's runtime).
+For instance, if you want to run a program that depends on AAA batteries,
+itself dependent on camomile.cmxs and nums.cmxs, you can build the required
+.cmxs libs as follows (other libs, including Thread, Dynlink, Unix and Str,
+are already included in ld_ocaml's runtime):
 
-If you use OMake, you can use these rules to generate all the .cmxs files for
-all the OCAMLPACKS at once under libs/:
+  ocamlfind ocamlopt -package camomile -shared -o camomile.cmxs camomile.cmxa
+  ocamlfind ocamlopt -package num -shared -o nums.cmxs nums.cmxa
+  ocamlfind ocamlopt -package aaa -shared -o aaa.cmxs aaa.cmxa
+
+Debian is already starting to distribute .cmxs files in OCaml library
+packages. Presumably, all packages in Debian and other distributions will
+include .cmxs files in the future, making manual cmxs generation unnecessary.
+
+If you use OMake, you can use these rules to generate the .cmxs files for all
+the OCAMLPACKS at once under libs/:
 
   # the target used to build all the .cmxs
   .PHONY: libs
@@ -91,7 +102,7 @@ all the OCAMLPACKS at once under libs/:
       libs: $(DST)
       $(DST):
           $(OCAMLFIND) ocamlopt -shared $(OCAMLFLAGS) -o $@ \
-            -package $(pack) $(ARCH) -linkall
+            -package $(pack) $(ARCH)
 
 Program compilation
 -------------------
@@ -101,13 +112,14 @@ You'd normally do
    ocamlfind ocamlopt -package aaa -o hello hello.ml -linkpkg
 
 which would link statically against AAA's libs and all its dependencies.
+
 In order to create a cmxs that can be run with
 
   ld_ocaml hello.cmxs
 
-you simply do
+you simply need to do
 
-  ocamlfind ocamlopt -package aaa -shared -o hello.cmx
+  ocamlfind ocamlopt -package aaa -shared -o hello.cmxs hello.ml
 
 The difference is that we don't link against the AAA package anymore, and the
 dynamic libs will be loaded as required by ld_ocaml (you'll have to make sure
