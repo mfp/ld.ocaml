@@ -7,11 +7,6 @@ let debug = ref 0
 
 external ld_plugin_header_offset : string -> int = "ld_get_caml_plugin_header_offset"
 
-let matches re s =
-  try
-    ignore (Str.search_forward re s 0); true
-  with Not_found -> false
-
 let close_finally f ic =
   try let y = f ic in close_in ic; y with e -> close_in ic; raise e
 
@@ -119,8 +114,6 @@ let state_of_known_modules ~known_interfaces ~known_implementations =
 
 let empty_state st =
   { st with st_libs = []; st_impls = M.empty; st_intfs = M.empty }
-
-let (|>) x f = f x
 
 let cmx_not_found_crc =
   "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000"
