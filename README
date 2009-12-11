@@ -21,6 +21,9 @@ Building
 Installing
 ----------
 Copy the  ld_ocaml  executable to some directory in your PATH.
+Don't rename the file (adding an extension is OK): ld_ocaml examines ARGV[0]
+at runtime in order to decide how to rewrite ARGV and which cmxs files to load
+(see below).
 
 Usage
 -----
@@ -31,6 +34,18 @@ looks for .cmxs libraries and loads those required by foo.cmxs. Sys.argv is
 modified so that foo.cmxs becomes Sys.argv.(0).
 You can also specify multiple .cmxs files to be loaded in order. The last one
 will become Sys.argv.(0).
+
+Alternatively, if only one cmxs object (plus its dependencies) is to be
+loaded, you can create a symlink to ld_ocaml in the same directory as the
+.cmxs, with the same name as the .cmxs *without the extension* (it's OK to add
+a different extension). For example, if you want to run hello.cmxs directly,
+you can do
+
+  $ cd /dir/where/hello.cmxs/is
+  $ ln -s /usr/local/bin/ld_ocaml hello    # hello.exe or any other extension OK
+...
+  $ hello -other -options                  # assuming it's in the path
+  $ /dir/where/hello.cmxs/is/hello         # otherwise
 
 ld_ocaml honors these environment variables:
 
