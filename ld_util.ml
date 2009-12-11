@@ -18,7 +18,7 @@ let (-!) = Int64.sub
  * cannot be resolved (e.g. there's a reference to a primitive defined in
  * another library), so we locate the offset of caml_plugin_header in the file
  * manually using BFD *)
-let manual_header_extraction filename : dynheader =
+let extract_headers filename : dynheader =
   match ld_plugin_header_offset filename with
       -1 -> failwith (sprintf "Could not find caml_plugin_header for %S." filename)
     | off ->
@@ -26,21 +26,18 @@ let manual_header_extraction filename : dynheader =
           (fun ic -> ignore (seek_in ic off); input_value ic)
           (open_in filename)
 
-let extract_headers file = manual_header_extraction file
-
 let extract_units filename =
-  let dll = dll_filename filename in
-    try
-      let header = extract_headers dll in
-        if header.magic <> dyn_magic_number then
-          failwith (filename ^ " is not an OCaml shared library.");
-        header.units
-    with
-      |  Failure msg ->
-          failwith (sprintf "Ld_util.extract_units (%S): %s" filename msg)
-      | e ->
-          failwith (sprintf "Ld_util.extract_units (%S): %s" filename
-                      (Printexc.to_string e))
+  try
+    let header = extract_headers (dll_filename filename) in
+      if header.magic <> dyn_magic_number then
+        failwith (filename ^ " is not an OCaml shared library.");
+      header.units
+  with
+    |  Failure msg ->
+        failwith (sprintf "Ld_util.extract_units (%S): %s" filename msg)
+    | e ->
+        failwith (sprintf "Ld_util.extract_units (%S): %s" filename
+                    (Printexc.to_string e))
 
 module DEP =
 struct
